@@ -34,17 +34,16 @@ def analysis_to_perform(
         c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False  # Flo's data
     )
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
-    # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=True,
         skip_if_existing=True,
     )
-    # results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
+    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    # results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)
+    results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)
 
     return results
 
@@ -79,22 +78,6 @@ if __name__ == "__main__":
         trails_to_analyze=["_ManipStim_L400_F50_I20"],  # If not specified, all trials will be analyzed
         skip_if_existing=True,
     )
-
-    # --- Example of how to plot the joint angles --- #
-    # plot = PlotLegData(
-    #     result_folder="results",
-    #     leg_to_plot=LegToPlot.RIGHT,
-    #     plot_type=PlotType.Q,
-    #     unique_event_to_split={
-    #         "event_index_type": EventIndexType.MARKERS,
-    #         "start": lambda data: int(data["events"][0]["heel_touch"][0]),
-    #         "stop": lambda data: int(data["events"][2]["heel_touch"][0]),
-    #     },
-    #     conditions_to_compare=["_Cond0006"],
-    # )
-    # plot.draw_plot()
-    # plot.save("results/AOT_01_Q_plot_temporary.png")
-    # plot.show()
 
     # --- Example of how to plot the joint angular velocities--- #
     plot = PlotLegData(

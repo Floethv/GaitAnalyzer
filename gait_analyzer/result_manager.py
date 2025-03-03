@@ -57,7 +57,7 @@ class ResultManager:
         self.optimal_estimator = None
         self.angular_momentum_calculator = None
 
-    def create_model(self, osim_model_type, skip_if_existing: bool, animate_model_flag: bool = False):
+    def create_model(self, osim_model_type, skip_if_existing: bool, skip_scaling:bool = False, animate_model_flag: bool = False):
         """
         Create and add the biorbd model to the ResultManager
         """
@@ -73,6 +73,7 @@ class ResultManager:
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
             skip_if_existing=skip_if_existing,
+            skip_scaling=skip_scaling,
             animate_model_flag=animate_model_flag,
         )
 

@@ -129,8 +129,29 @@ class ModelCreator:
         models_result_folder: str,
         osim_model_type,
         skip_if_existing: bool,
+        skip_scaling: bool,
         animate_model_flag: bool,
     ):
+        """
+        Initialize the ModelCreator.
+        .
+        Parameters
+        ----------
+        subject: Subject
+            The subject to create the model for.
+        static_trial: str
+            The path to the static trial c3d file to use to create the model.
+        models_result_folder: str
+            The folder where the models will be saved.
+        osim_model_type: OsimModels
+            The type of model to create.
+        skip_if_existing: bool
+            If the model already exists, skip the creation.
+        skip_scaling: bool
+            If the model is already scaled in OpenSim's GUI, skip the scaling and only create the biomod.
+        animate_model_flag: bool
+            If True, animate the model after creating it.
+        """
 
         # Checks
         if not isinstance(subject, Subject):
@@ -141,6 +162,8 @@ class ModelCreator:
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")
+        if not isinstance(skip_scaling, bool):
+            raise ValueError("skip_scaling must be a boolean.")
         if not isinstance(animate_model_flag, bool):
             raise ValueError("animate_model_flag must be a boolean.")
 
@@ -183,11 +206,13 @@ class ModelCreator:
 
         # Create the models
         if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
-            print(f"The model {self.biorbd_model_full_path} is being created...")
-            self.convert_c3d_to_trc()
-            self.personalize_xml_file_hacky()
-            self.scale_opensim_model()
-            self.create_biorbd_model()
+            if not skip_scaling:
+                print(f"The model {self.biorbd_model_full_path} is being created...")
+                self.convert_c3d_to_trc()
+                self.personalize_xml_file_hacky()
+                self.scale_opensim_model()
+            else:
+                self.create_biorbd_model()
         else:
             print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
         self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
