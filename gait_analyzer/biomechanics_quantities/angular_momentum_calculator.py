@@ -29,6 +29,7 @@ class AngularMomentumCalculator:
         self.subject_height = subject.subject_height
         self.gravity = biorbd_model.getGravity().to_array()
         self.nb_frames = self.q.shape[1]
+        self.dof_names = [m.to_string() for m in self.model.nameDof()]
 
         # Outputs
         self.H_segments = None
@@ -104,12 +105,13 @@ class AngularMomentumCalculator:
                 H_rot_local = I_local @ omega_local
                 H_rot_global = R_seg_global @ H_rot_local
 
-                # Moment cinétique de translation (transport)
+                # Relation de transport
                 H_trans = np.cross(com_seg - com_global, mass * (comdot_seg - comdot_global))
 
                 # Moment cinétique total du segment
                 H_seg = H_rot_global + H_trans
                 H_segments[seg_name][:, frame_i] = H_seg
+
 
                 # Ajout au moment total du corps
                 H_frame_total += H_seg
@@ -159,4 +161,5 @@ class AngularMomentumCalculator:
             "H_total": self.H_total,
             "segments_data": self.segments_data,
             "total_angular_momentum_normalized": self.total_angular_momentum_normalized,
+            "DoF_names" : self.dof_names
         }
