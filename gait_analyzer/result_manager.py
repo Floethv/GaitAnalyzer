@@ -1,3 +1,4 @@
+import os
 from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
@@ -7,6 +8,12 @@ from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
+from gait_analyzer.mos_calculation import MosCalculation
+from gait_analyzer.me_calculation import MechanicalEnergyCalculator
+
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 class ResultManager:
@@ -14,7 +21,7 @@ class ResultManager:
     This class contains all the results from the gait analysis and is the main class handling all types of analysis to perform on the experimental data.
     """
 
-    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str):
+    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str, c3d_full_file_path, static_trial_full_file_path):
         """
         Initialize the ResultManager.
         .
@@ -46,6 +53,10 @@ class ResultManager:
         self.cycles_to_analyze = cycles_to_analyze
         self.result_folder = result_folder
         self.static_trial = static_trial
+        self.c3d_full_file_path = c3d_full_file_path
+        self.result_folder = result_folder
+        self.static_trial_full_file_path = static_trial_full_file_path
+
 
         # Extended attributes
         self.experimental_data = None
@@ -56,6 +67,12 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
         self.angular_momentum_calculator = None
+        self.mos_calculation = None
+        self.mechanical_energy_calculator = None
+        self.Em = None
+        self.Em_norm = None
+        self.E_pot = None
+        self. E_kin = None
 
     def create_model(
         self,
@@ -221,6 +238,124 @@ class ResultManager:
             self.subject,
             skip_if_existing=skip_if_existing,
         )
+
+    def compute_mechanical_energy(self, skip_if_existing: bool = False, plot: bool = False):
+
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.kinematics_reconstructor is None:
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
+            )
+        if self.angular_momentum_calculator is None:
+            raise Exception(
+                "Please compute angular momentum first (needed for segment COM and COMdot data)"
+            )
+
+        # Création de l’objet si nécessaire
+        if self.mechanical_energy_calculator is None:
+            self.mechanical_energy_calculator = MechanicalEnergyCalculator(
+                self.model_creator.biorbd_model,
+                self.experimental_data,
+                self.kinematics_reconstructor,
+                self.subject,
+                self.angular_momentum_calculator.segments_data,
+            )
+
+        # Calcul (avec gestion du cache interne)
+        Em = self.mechanical_energy_calculator.compute_mechanical_energy(
+            skip_if_existing=skip_if_existing
+        )
+
+        if plot:
+            self.mechanical_energy_calculator.plot_energy()
+
+        return Em
+
+    def compute_mos(self, skip_if_existing: bool = False):
+
+        # ----------------------------------------------------------------------
+        # Checks
+        # ----------------------------------------------------------------------
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.kinematics_reconstructor is None:
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
+            )
+
+        trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
+        mos_file_pkl = os.path.join(self.experimental_data.result_folder, f"mos_{trial_name}.pkl")
+        mos_file_mat = os.path.join(self.experimental_data.result_folder, f"mos_{trial_name}.mat")
+
+        # ----------------------------------------------------------------------
+        # Collect required data
+        # ----------------------------------------------------------------------
+        model = self.model_creator.biorbd_model
+        q = self.kinematics_reconstructor.q_filtered
+        qdot = self.kinematics_reconstructor.qdot
+        markers_sorted = self.kinematics_reconstructor.markers
+
+        model_marker_names = [
+            model.markerNames()[i].to_string() for i in range(model.nbMarkers())
+        ]
+
+        if hasattr(self.experimental_data, "f_ext_sorted_filtered"):
+            f_ext = self.experimental_data.f_ext_sorted_filtered
+        else:
+            f_ext = self.experimental_data.f_ext_sorted
+
+        # # ----------------------------------------------------------------------
+        # # Marker mapping (important)
+        # # ----------------------------------------------------------------------
+        # marker_indices = {
+        #     "LLFE": model_marker_names.index("LLFE"),
+        #     "RLFE": model_marker_names.index("RLFE"),
+        #     "LTT2": model_marker_names.index("LTT2"),
+        #     "RTT2": model_marker_names.index("RTT2"),
+        #     "LMH5": model_marker_names.index("LMH5"),
+        #     "RMH5": model_marker_names.index("RMH5"),
+        #     "SACR": model_marker_names.index("SACR"),  # CoM proxy
+        # }
+
+        # ----------------------------------------------------------------------
+        # Compute MoS
+        # ----------------------------------------------------------------------
+        mos_calc = MosCalculation(
+            model=model,
+            markers_sorted=markers_sorted,
+            model_marker_names=model_marker_names,
+            q=q,
+            qdot=qdot,
+            experimental_data=self.experimental_data,
+        )
+
+        # ----------------------------------------------------------------------
+        # Run or load
+        # ----------------------------------------------------------------------
+        if skip_if_existing and mos_calc.check_if_existing():
+            print("MoS already computed — loading existing results.")
+            AP_MoS, ML_MoS = mos_calc.AP_MoS, mos_calc.ML_MoS
+        else:
+            AP_MoS, ML_MoS = mos_calc.compute_mos()
+            mos_calc.save()
+            print("MoS computation completed and saved (.pkl).")
+
+        # ----------------------------------------------------------------------
+        # Export .mat
+        # ----------------------------------------------------------------------
+        try:
+            import scipy.io as sio
+            sio.savemat(mos_file_mat, {"AP_MoS": AP_MoS, "ML_MoS": ML_MoS})
+            print(f"MoS exported to .mat: {mos_file_mat}")
+        except ImportError:
+            print("scipy not installed: cannot export .mat file")
+
+        return AP_MoS, ML_MoS
 
     def estimate_optimally(
         self,

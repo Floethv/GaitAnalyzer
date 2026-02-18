@@ -1,7 +1,6 @@
 import pickle
 import os
 import numpy as np
-from pyomeca import Markers
 
 from gait_analyzer import Operator, KinematicsReconstructor
 from gait_analyzer.experimental_data import ExperimentalData
@@ -54,6 +53,7 @@ class InverseDynamicsPerformer:
             raise ValueError("animate_dynamics_flag must be a boolean")
         if animate_dynamics_flag and not reintegrate_flag:
             print("When animate_dynamics_flag is True, reintegrate_flag is automatically set to True.")
+            print("To avoid crashes, only the first 200 frames will be displayed in the animation.")
             reintegrate_flag = True
 
         # Initial attributes
@@ -213,18 +213,18 @@ class InverseDynamicsPerformer:
         model.options.show_marker_labels = False
         model.options.show_center_of_mass_labels = False
 
-        viz = PhaseRerun(self.kinematics_reconstructor.t)
+        viz = PhaseRerun(self.kinematics_reconstructor.t[:200])
 
         # Add experimental markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
-        markers = PyoMarkers(data=self.kinematics_reconstructor.markers, channels=marker_names, show_labels=False)
+        markers = PyoMarkers(data=self.kinematics_reconstructor.markers[:, :, :200], channels=marker_names, show_labels=False)
 
         # Add force plates to the animation
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(
             self.experimental_data.analogs_time_vector,
             self.experimental_data.markers_time_vector,
             list(self.kinematics_reconstructor.frame_range),
-        )
+        )[:200]
         viz.add_force_plate(num=0, corners=self.experimental_data.platform_corners[0])
         viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[1])
         viz.add_force_data(
@@ -239,10 +239,10 @@ class InverseDynamicsPerformer:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_filtered[:, :200], tracked_markers=markers)
 
         # Add the reintegration of the dynamics
-        viz.add_animated_model(model, self.q_reintegrated)
+        viz.add_animated_model(model, self.q_reintegrated[:, :200])
 
         # Play
         viz.rerun_by_frame("Dynamics reconstruction")

@@ -173,7 +173,7 @@ class AnalysisPerformer:
         # For python analysis
         with open(result_file_name + ".pkl", "wb") as f:
             pickle.dump(result_dict, f)
-
+        # For matlab analysis
         # --- Fix for MATLAB field name length limit (31 chars) ---
         def shorten_keys(d, max_len=31):
             """Tronque récursivement les clés trop longues pour savemat()."""
@@ -187,8 +187,6 @@ class AnalysisPerformer:
             return new_dict
 
         result_dict = shorten_keys(result_dict)
-
-        # For matlab analysis
         savemat(result_file_name + ".mat", result_dict)
 
     def check_for_geometry_files(self):
