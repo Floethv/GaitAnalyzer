@@ -595,7 +595,7 @@ class ModelCreator:
                 abs_path = os.path.abspath(self.functional_trials_path)
                 raise RuntimeError(f"The functional trial for {trial_name} was not found in the directory {abs_path}.")
 
-        # # Hip Right
+        # Hip Right
         joint_center_tool.add(
             Score(
                 functional_c3d=C3dData(trials_list["right_hip"]),
@@ -634,7 +634,7 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # # Hip Left
+        # Hip Left
         joint_center_tool.add(
             Score(
                 functional_c3d=C3dData(trials_list["left_hip"]),

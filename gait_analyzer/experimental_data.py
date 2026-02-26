@@ -265,7 +265,7 @@ class ExperimentalData:
                 f_ext_sorted[i_platform, :3, :] = cop_ezc3d[:, :]
                 f_ext_sorted_filtered[i_platform, :3, :] = cop_filtered[i_platform, :, :]
                 f_ext_sorted[i_platform, 3:6, :] = tz[:, :]
-                f_ext_sorted_filtered[i_platform, 3:6, :] = tz_filtered[i_platform, :, :]
+                f_ext_sorted_filtered[i_platform, 3:6, :] = moment_filtered[i_platform, :, :] #Tz
                 f_ext_sorted[i_platform, 6:9, :] = force[:, :]
                 f_ext_sorted_filtered[i_platform, 6:9, :] = force_filtered[i_platform, :, :]
 

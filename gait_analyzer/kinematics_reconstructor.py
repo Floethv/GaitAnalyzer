@@ -250,7 +250,7 @@ class KinematicsReconstructor:
             with open(result_file_full_path, "rb") as file:
                 data = pickle.load(file)
                 self.frame_range = data["frame_range"]
-                self.padded_frame_range = data["padded_frame_range"]
+                #self.padded_frame_range = data["padded_frame_range"]
                 self.markers = data["markers"]
                 self.cycles_to_analyze = data["cycles_to_analyze_kin"]
                 self.t = data["t"]
@@ -333,16 +333,18 @@ class KinematicsReconstructor:
         Perform the kinematics reconstruction for all frames, and then only keep the frames in the cycles to analyze.
         This is a waist of computation, but the beginning of the reconstruction is always shitty.
         """
-        self.frame_range, self.padded_frame_range = self.events.get_frame_range(self.cycles_to_analyze)
-        if self.frame_range != self.padded_frame_range:
-            index_to_keep = range(
-                self.frame_range.start - self.padded_frame_range.start,
-                (self.frame_range.start - self.padded_frame_range.start)
-                + (self.frame_range.stop - self.frame_range.start),
-            )
-        else:
-            index_to_keep = range(len(self.frame_range))
-        markers = self.experimental_data.markers_sorted[:, :, self.padded_frame_range]
+        #self.frame_range, self.padded_frame_range = self.events.get_frame_range(self.cycles_to_analyze)
+        # if self.frame_range != self.padded_frame_range:
+        #     index_to_keep = range(
+        #         self.frame_range.start - self.padded_frame_range.start,
+        #         (self.frame_range.start - self.padded_frame_range.start)
+        #         + (self.frame_range.stop - self.frame_range.start),
+        #     )
+        # else:
+        #     index_to_keep = range(len(self.frame_range))
+        # markers = self.experimental_data.markers_sorted[:, :, :] #self.padded_frame_range]
+        self.frame_range = range(self.experimental_data.markers_sorted.shape[2])
+        markers = self.experimental_data.markers_sorted[:, :, :]
 
         q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
@@ -386,7 +388,7 @@ class KinematicsReconstructor:
                 raise NotImplementedError(f"The reconstruction_type {recons_method} is not implemented yet.")
 
             # Check if this reconstruction was acceptable
-            residuals = residuals[:, index_to_keep]
+            residuals = residuals #[:, index_to_keep]
             print(
                 f"75 percentile between : {np.min(np.nanpercentile(residuals, 75, axis=0))} and "
                 f"{np.max(np.nanpercentile(residuals, 75, axis=0))}"
@@ -400,9 +402,10 @@ class KinematicsReconstructor:
                 "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
             )
 
-        self.q = q_recons[:, index_to_keep]
-        self.t = self.experimental_data.markers_time_vector[self.frame_range]
-        self.markers = markers[:, :, index_to_keep]
+        self.q = q_recons #[:, index_to_keep]
+        dt = self.experimental_data.markers_dt
+        self.t = np.arange(markers.shape[2]) * dt
+        self.markers = markers #[:, :, index_to_keep]
         self.marker_residuals = residuals
 
     def filter_kinematics(self):
@@ -504,7 +507,7 @@ class KinematicsReconstructor:
         marker_data_with_ones[:3, :, :] = self.markers
 
         t_animation = self.t
-        frame_range = self.frame_range
+        frame_range = range(self.experimental_data.markers_sorted.shape[2])
         if self.q.shape[0] == model.nb_q:
             q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:

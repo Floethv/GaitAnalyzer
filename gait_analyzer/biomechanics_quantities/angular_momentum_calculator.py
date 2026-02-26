@@ -37,7 +37,6 @@ class AngularMomentumCalculator:
         self.segments_data = None
         self.total_angular_momentum_normalized = None
 
-        # Chargement si déjà existant
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_angular_momentum = True
         else:
@@ -47,7 +46,7 @@ class AngularMomentumCalculator:
 
     def calculate_H_and_angular_momentum(self):
         """
-        Calcule le moment cinétique segmentaire et total autour du CoM global.
+        Calculates the segmental and total angular momentum around the global CoM.
         """
         segments_data = {}
         H_segments = {}
@@ -55,7 +54,6 @@ class AngularMomentumCalculator:
         nb_frames = self.nb_frames
         H_total = np.zeros((3, nb_frames))
 
-        # Initialisation par segment
         for segment_i in range(nb_segments):
             seg = self.model.segment(segment_i)
             char = seg.characteristics()
@@ -69,51 +67,40 @@ class AngularMomentumCalculator:
             }
             H_segments[seg_name] = np.zeros((3, nb_frames))
 
-        # Boucle temporelle
         for frame_i in range(nb_frames):
             q_i = self.q[:, frame_i]
             qdot_i = self.qdot[:, frame_i]
 
-            # CoM global et vitesse du CoM global
             com_global = self.model.CoM(q_i).to_array()
             comdot_global = self.model.CoMdot(q_i, qdot_i, True).to_array()
 
             H_frame_total = np.zeros(3)
 
-            # Boucle segments
             for segment_i in range(nb_segments):
                 seg = self.model.segment(segment_i)
                 seg_name = seg.name().to_string()
                 mass = segments_data[seg_name]["Masse"]
                 I_local = segments_data[seg_name]["Inertie"]
 
-                # COM segmentaire et vitesse
                 com_seg = self.model.CoMbySegment(q_i, segment_i, True).to_array()
                 comdot_seg = self.model.CoMdotBySegment(q_i, qdot_i, segment_i, True).to_array()
 
                 segments_data[seg_name]["COM"][:, frame_i] = com_seg
                 segments_data[seg_name]["COMdot"][:, frame_i] = comdot_seg
 
-                # Matrice de rotation globale du segment
                 R_seg_global = np.array(self.model.globalJCS(q_i, segment_i).to_array())[:3, :3]
 
-                # Vitesse angulaire globale puis locale
                 omega_global = self.model.segmentAngularVelocity(q_i, qdot_i, segment_i).to_array()
                 omega_local = R_seg_global.T @ omega_global
 
-                # Moment cinétique de rotation (local → global)
                 H_rot_local = I_local @ omega_local
                 H_rot_global = R_seg_global @ H_rot_local
 
-                # Relation de transport
                 H_trans = np.cross(com_seg - com_global, mass * (comdot_seg - comdot_global))
 
-                # Moment cinétique total du segment
                 H_seg = H_rot_global + H_trans
                 H_segments[seg_name][:, frame_i] = H_seg
 
-
-                # Ajout au moment total du corps
                 H_frame_total += H_seg
 
             H_total[:, frame_i] = H_frame_total
@@ -126,7 +113,7 @@ class AngularMomentumCalculator:
 
     def normalize_total_angular_momentum(self):
         """
-        Normalise le moment cinétique total par m * h * sqrt(g*h).
+        Normalizes the total angular momentum by m * h * sqrt(g*h).
         """
         g_norm = np.linalg.norm(self.gravity)
         normalization_factor = self.subject_mass * self.subject_height * np.sqrt(g_norm * self.subject_height)
