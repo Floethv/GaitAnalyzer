@@ -2,7 +2,6 @@ import numpy as np
 import pickle
 import os
 import ezc3d
-import matplotlib.pyplot as plt
 
 class MosCalculation:
     def __init__(
@@ -84,9 +83,14 @@ class MosCalculation:
         l_ML = 1.34 * trochanteric_height
         omega_AP = np.sqrt(g / l_AP)
         omega_ML = np.sqrt(g / l_ML)
-
-        fz_left = self.f_ext[0, 8, :]
-        fz_right = self.f_ext[1, 8, :]
+        analog_to_marker_ratio = int(
+            round(
+                self.experimental_data.analogs_time_vector.shape[0]
+                / self.experimental_data.markers_time_vector.shape[0]
+            )
+        )
+        fz_left = self.f_ext[0, 8, ::analog_to_marker_ratio]
+        fz_right = self.f_ext[1, 8, ::analog_to_marker_ratio]
         left_stance = fz_left > threshold
         right_stance = fz_right > threshold
 
@@ -111,12 +115,14 @@ class MosCalculation:
                 bos_AP[frame] = RTT2[0]
                 bos_ML[frame] = RCAL[1]
             elif left_stance[frame] and right_stance[frame]:
-                if RCAL[0] >= LCAL[0]:
-                    bos_AP[frame] = RTT2[0]
+                if RCAL[1] >= LCAL[1]:
                     bos_ML[frame] = RCAL[1]
                 else:
-                    bos_AP[frame] = LTT2[0]
                     bos_ML[frame] = LCAL[1]
+                if RTT2[0] >= LTT2[0]:
+                    bos_AP[frame] = RTT2[0]
+                else:
+                    bos_AP[frame] = LTT2[0]
 
         AP_MoS = bos_AP - xcom
         ML_MoS = bos_ML - ycom
