@@ -148,6 +148,8 @@ class KinematicsReconstructor:
         skip_if_existing: bool,
         animate_kinematics_flag: bool,
         plot_kinematics_flag: bool,
+        q_regularization_weight: float | np.ndarray = None,
+        qdot_regularization_weight: float | np.ndarray = None,
     ):
         """
         Initialize the KinematicsReconstructor.
@@ -171,6 +173,10 @@ class KinematicsReconstructor:
             If True, the kinematics will be animated through pyorerun
         plot_kinematics_flag: bool
             If True, the kinematics will be plotted and saved in a .png
+        q_regularization_weight: float | np.ndarray
+            The weight of the regularization term on q for the LSQ reconstruction
+        qdot_regularization_weight: float | np.ndarray
+            The weight of the regularization term on qdot for the LSQ reconstruction
         """
         # Checks
         if not isinstance(experimental_data, ExperimentalData):
@@ -203,6 +209,8 @@ class KinematicsReconstructor:
         self.model_creator = model_creator
         self.events = events
         self.cycles_to_analyze = cycles_to_analyze
+        self.q_regularization_weight = q_regularization_weight
+        self.qdot_regularization_weight = qdot_regularization_weight
 
         # Parameters of the reconstruction
         self.acceptance_threshold = 0.1  # 10 cm
@@ -226,7 +234,6 @@ class KinematicsReconstructor:
             # Perform the kinematics reconstruction
             self.check_for_marker_inversion()
             self.perform_kinematics_reconstruction()
-            self.filter_kinematics()
             self.save_kinematics_reconstruction()
 
         if animate_kinematics_flag:
@@ -234,6 +241,14 @@ class KinematicsReconstructor:
 
         if plot_kinematics_flag:
             self.plot_kinematics()
+
+    def initialize_regularization_weights(self) -> np.ndarray:
+        if self.qdot_regularization_weight is None:
+            self.q_regularization_weight = np.zeros((self.biorbd_model.nbQ(),))
+            self.q_regularization_weight[3:6] = 1.0
+            self.q_regularization_weight[20:23] = 1.0
+        if self.qdot_regularization_weight is None:
+            self.qdot_regularization_weight = np.ones((self.biorbd_model.nbQ(),)) * 0.1
 
     def check_if_existing(self) -> bool:
         """
@@ -346,16 +361,19 @@ class KinematicsReconstructor:
         self.frame_range = range(self.experimental_data.markers_sorted.shape[2])
         markers = self.experimental_data.markers_sorted[:, :, :]
 
-        q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
-
         residuals = None
         for recons_method in self.reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
                 ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
+                self.q = q_recons[:, index_to_keep]
                 residuals = ik.sol()["residuals"]
+                if self.q_regularization_weight is not None or self.qdot_regularization_weight is not None:
+                    print("Warning: Regularization weights are only used for the LSQ reconstruction method.")
+                self.q_filtered, self.qdot, self.qddot = self.filter_kinematics()
+
             elif recons_method == ReconstructionType.LSQ:
                 biobuddy_model = biobuddy.BiomechanicalModelReal().from_biomod(
                     self.model_creator.biorbd_model_full_path
@@ -370,20 +388,37 @@ class KinematicsReconstructor:
                     marker_names=biobuddy_model.marker_names,
                     marker_weights=self.model_creator.marker_weights,
                     method="lm",
-                    q_regularization_weight=q_regularization_weight,
+                    q_regularization_weight=self.q_regularization_weight,
+                    qdot_regularization_weight=self.qdot_regularization_weight,
                     q_target=np.zeros((self.biorbd_model.nbQ(),)),
                     animate_reconstruction=False,
                     compute_residual_distance=True,
                 )
+                self.q = q_recons[:, index_to_keep]
+                self.q_filtered, self.qdot, self.qddot = self.filter_kinematics()
+
             elif recons_method == ReconstructionType.EKF:
-                # TODO: Charbie -> When using the EKF, these qdot and qddot should be used instead of finite difference
-                _, q_recons, _, _ = biorbd.extended_kalman_filter(
-                    self.biorbd_model, self.experimental_data.c3d_full_file_path
+                if self.q_regularization_weight is not None or self.qdot_regularization_weight is not None:
+                    print("Warning: Regularization weights are only used for the LSQ reconstruction method.")
+
+                # Create
+                _, q_filtered, qdot, qddot = biorbd.extended_kalman_filter(
+                    self.biorbd_model,
+                    self.experimental_data.c3d_full_file_path,
+                    frames=slice(self.padded_frame_range.start, self.padded_frame_range.stop),
                 )
-                residuals = np.zeros_like(markers)
-                raise Warning(
-                    "The EKF acceptance criteria was not implemented yet. Please see the developers if you encounter this warning."
+                self.q = q_filtered[:, index_to_keep]
+                self.q_filtered = q_filtered[:, index_to_keep]
+                self.qdot = qdot[:, index_to_keep]
+                self.qddot = qddot[:, index_to_keep]
+
+                residuals = np.zeros(
+                    (
+                        3,
+                        q_filtered.shape[1],
+                    )
                 )
+                print("Warning: The EKF acceptance criteria was not implemented yet.")
             else:
                 raise NotImplementedError(f"The reconstruction_type {recons_method} is not implemented yet.")
 
@@ -449,7 +484,9 @@ class KinematicsReconstructor:
 
             return q_filtered, qdot, qddot
 
-        self.q_filtered, self.qdot, self.qddot = filter(self.q)
+        q_filtered, qdot, qddot = filter(self.q)
+
+        return q_filtered, qdot, qddot
 
     def plot_kinematics(self):
         all_in_one = True

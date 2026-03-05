@@ -138,9 +138,6 @@ class OsimModels:
                     )
                 )
 
-        # Fix via points
-        model.fix_via_points()
-
         return model
 
     # Child classes acting as an enum
@@ -409,7 +406,8 @@ class ModelCreator:
         mvc_trials_path: str,
         models_result_folder: str,
         osim_model_type,
-        q_regularization_weight: float,
+        q_regularization_weight: float | np.ndarray,
+        qdot_regularization_weight: float | np.ndarray,
         skip_if_existing: bool,
         animate_model_flag: bool,
         vtp_geometry_path: str,
@@ -427,8 +425,10 @@ class ModelCreator:
             The folder where the models will be saved.
         osim_model_type: OsimModels
             The type of model to create.
-        q_regularization_weight: float
+        q_regularization_weight: float | np.ndarray
             The weight to use for the regularization term on the joint angles during the inverse kinematic step of the scaling procedure.
+        qdot_regularization_weight: float | np.ndarray
+            The weight to use for the regularization term on the joint velocities during the inverse kinematic step of the scaling procedure.
         skip_if_existing: bool
             If the model already exists, skip the creation.
         animate_model_flag: bool
@@ -449,8 +449,10 @@ class ModelCreator:
             raise RuntimeError(f"MVC trials path {mvc_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
-        if not isinstance(q_regularization_weight, (float, int)):
+        if not isinstance(q_regularization_weight, (float, int, np.ndarray)):
             raise ValueError("q_regularization_weight must be a float.")
+        if not isinstance(qdot_regularization_weight, (float, int, np.ndarray)):
+            raise ValueError("qdot_regularization_weight must be a float.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")
         if not isinstance(animate_model_flag, bool):
@@ -466,6 +468,7 @@ class ModelCreator:
         self.mvc_trials_path = mvc_trials_path
         self.models_result_folder = models_result_folder
         self.q_regularization_weight = q_regularization_weight
+        self.qdot_regularization_weight = qdot_regularization_weight
 
         # Extended attributes
         self.trc_file_path = None
@@ -539,6 +542,7 @@ class ModelCreator:
             muscle_state_type=MuscleStateType.DEGROOTE,
             mesh_dir=self.vtp_geometry_path,
         )
+        self.model.fix_via_points()
 
     def scale_model(self):
 
@@ -561,6 +565,7 @@ class ModelCreator:
             static_c3d=C3dData(self.static_trial, first_frame=100, last_frame=200),
             mass=self.subject.subject_mass,
             q_regularization_weight=self.q_regularization_weight,
+            qdot_regularization_weight=self.qdot_regularization_weight,
             make_static_pose_the_models_zero=True,
             visualize_optimal_static_pose=True,
             method="lm",

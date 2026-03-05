@@ -75,10 +75,12 @@ def analysis_to_perform(
             ReconstructionType.ONLY_LM,
             ReconstructionType.LM,
             ReconstructionType.TRF,
+            ReconstructionType.EKF,
         ],
         animate_kinematics_flag=True,
         plot_kinematics_flag=False,
         skip_if_existing=True,
+        qdot_regularization_weight=0.1,
     )
 
     results.compute_angular_momentum()
