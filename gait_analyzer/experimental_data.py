@@ -392,8 +392,11 @@ class ExperimentalData:
                 opp_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
                 study_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
 
-            fv_foot1 = fv_foot1 - np.nanmin(fv_foot1)
-            fv_foot2 = fv_foot2 - np.nanmin(fv_foot2)
+            baseline1 = np.nanmean(fv_foot1[fv_foot1 < 20])
+            baseline2 = np.nanmean(fv_foot2[fv_foot2 < 20])
+
+            fv_foot1 = fv_foot1 - baseline1
+            fv_foot2 = fv_foot2 - baseline2
 
             fs_force = self.analogs_sampling_frequency
             fs_mks = self.marker_sampling_frequency
