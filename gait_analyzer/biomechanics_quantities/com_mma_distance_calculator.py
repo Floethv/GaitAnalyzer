@@ -7,11 +7,11 @@ from gait_analyzer.subject import Subject
 from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 
 
-class DCOMMMACalculator:
+class ComMmaDistanceCalculator:
     """
     Computes the dCoM-MMA as defined by:
-    dCoM-MMA = (R × dH_COM/dt) / ||R||²
-    where R is the total ground reaction force obtained by summing all force plates.
+    dCoM-MMA = (F × dH_COM/dt) / ||F||²
+    where F is the total ground reaction force obtained by summing all force plates.
     """
 
     def __init__(
@@ -38,7 +38,7 @@ class DCOMMMACalculator:
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_dcom_mma = True
         else:
-            self.compute_dcom_mma()
+            self.compute_com_mma_distance()
             self.save_dcom_mma()
 
     def compute_Hdot(self):
@@ -55,7 +55,7 @@ class DCOMMMACalculator:
         """
         self.F_resultant = np.sum(self.f_ext[:, 6:9, :], axis=0)
 
-    def compute_dcom_mma(self):
+    def compute_com_mma_distance(self):
         self.compute_Hdot()
         self.compute_resultant_force()
 

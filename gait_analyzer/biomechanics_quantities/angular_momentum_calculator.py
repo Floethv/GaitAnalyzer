@@ -10,7 +10,9 @@ from gait_analyzer.experimental_data import ExperimentalData
 
 class AngularMomentumCalculator:
     """
-    Computes the angular momentum (H) of the whole body and of each segment around the global center of mass (CoM).
+     This class computes the angular momentum of the whole body (total_angular_momentum) and of each segment (segments_angular_momentum).
+     The angular momentum is normalised by subject_mass * subject_height * sqrt(gravity * height) to allow comparison across subjects.
+     Similarly, the segments' angular momentum is also normalised by segment_mass * segment_length * sqrt(gravity * segment_length).
     """
 
     def __init__(
@@ -21,6 +23,24 @@ class AngularMomentumCalculator:
         subject: Subject,
         skip_if_existing: bool,
     ):
+        """
+        Initialize the AngularMomentumCalculator.
+        .
+        Parameters
+        ----------
+        biorbd_model : biorbd.Model
+            The biorbd model of the subject.
+        experimental_data : ExperimentalData
+            The experimental data for this trial.
+        kinematics_reconstructor : KinematicsReconstructor
+            The kinematics reconstructor object containing the filtered joint angles and velocities.
+        subject : Subject
+            The subject object containing subject-specific parameters like mass and height.
+        # segments_length: dict[str, float]
+        #     A dictionary containing the length of each segment in meters.
+        skip_if_existing : bool
+            If True, skip the angular momentum computations if it already exists.
+        """
         self.model = biorbd_model
         self.experimental_data = experimental_data
         self.q = kinematics_reconstructor.q_filtered
@@ -40,11 +60,11 @@ class AngularMomentumCalculator:
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_angular_momentum = True
         else:
-            self.calculate_H_and_angular_momentum()
+            self.calculate_angular_momentum_segment_and_total()
             self.normalize_total_angular_momentum()
             self.save_angular_momentum()
 
-    def calculate_H_and_angular_momentum(self):
+    def calculate_angular_momentum_segment_and_total(self):
         """
         Calculates the segmental and total angular momentum around the global CoM.
         """

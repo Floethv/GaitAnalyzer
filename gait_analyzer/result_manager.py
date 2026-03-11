@@ -9,16 +9,16 @@ from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
-from gait_analyzer.mos_calculation import MosCalculation
-from gait_analyzer.me_calculation import MechanicalEnergyCalculator
-from gait_analyzer.DCOMMMACalculator import DCOMMMACalculator
+from gait_analyzer.biomechanics_quantities.marginofstability_calculator import MarginofStabilityCalculation
+from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import MechanicalEnergyCalculator
+from gait_analyzer.biomechanics_quantities.com_mma_distance_calculator import ComMmaDistanceCalculator
 
 class ResultManager:
     """
     This class contains all the results from the gait analysis and is the main class handling all types of analysis to perform on the experimental data.
     """
 
-    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str, c3d_full_file_path, static_trial_full_file_path):
+    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str, trial_full_file_path, static_trial_full_file_path):
         """
         Initialize the ResultManager.
         .
@@ -50,7 +50,7 @@ class ResultManager:
         self.cycles_to_analyze = cycles_to_analyze
         self.result_folder = result_folder
         self.static_trial = static_trial
-        self.c3d_full_file_path = c3d_full_file_path
+        self.trial_full_file_path = trial_full_file_path
         self.result_folder = result_folder
         self.static_trial_full_file_path = static_trial_full_file_path
 
@@ -64,9 +64,9 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
         self.angular_momentum_calculator = None
-        self.mos_calculator = None
+        self.marginofstability_calculator = None
         self.mechanical_energy_calculator = None
-        self.dcom_mma_calculator = None
+        self.com_mma_distance_calculator = None
         self.Em = None
         self.Em_norm = None
         self.E_pot = None
@@ -243,13 +243,13 @@ class ResultManager:
             skip_if_existing=skip_if_existing,
         )
 
-    def compute_dcom_mma(self, skip_if_existing: bool = False):
+    def compute_com_mma_distance(self, skip_if_existing: bool = False):
         if self.angular_momentum_calculator is None:
             raise Exception("Compute angular momentum first")
         if self.kinematics_reconstructor is None:
             raise Exception("Compute kinematics first")
 
-        self.dcom_mma_calculator = DCOMMMACalculator(
+        self.com_mma_distance_calculator = ComMmaDistanceCalculator(
             angular_momentum_calculator=self.angular_momentum_calculator,
             experimental_data=self.experimental_data,
             subject=self.subject,
@@ -257,7 +257,7 @@ class ResultManager:
             skip_if_existing=skip_if_existing,
         )
 
-        self.dCoM_MMA = self.dcom_mma_calculator.dCoM_MMA_norm
+        self.dCoM_MMA = self.com_mma_distance_calculator.dCoM_MMA_norm
 
     def compute_mechanical_energy(self, skip_if_existing: bool = False, plot: bool = False):
 
@@ -292,11 +292,11 @@ class ResultManager:
 
         return Em
 
-    def compute_mos(self, skip_if_existing: bool = False):
-        if self.mos_calculator is not None:
+    def compute_marginofstability(self, skip_if_existing: bool = False):
+        if self.marginofstability_calculator is not None:
             return
 
-        self.mos_calculator = MosCalculation(
+        self.marginofstability_calculator = MarginofStabilityCalculation(
             model=self.model_creator.biorbd_model,
             markers_sorted=self.experimental_data.markers_sorted,
             model_marker_names=self.experimental_data.model_marker_names,

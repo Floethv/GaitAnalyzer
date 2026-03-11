@@ -3,7 +3,7 @@ import pickle
 import os
 import ezc3d
 
-class MosCalculation:
+class MarginofStabilityCalculation:
     def __init__(
         self,
         model,
@@ -29,15 +29,15 @@ class MosCalculation:
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_mos = True
         else:
-            self.compute_mos()
-            self.save_mos()
+            self.compute_marginofstability()
+            self.save_marginofsstability()
 
     def _idx(self, name):
         if name not in self.model_marker_names.index:
             raise RuntimeError(f"Marker {name} not found")
         return self.model_marker_names.index.index(name)
 
-    def compute_mos(self, threshold=15):
+    def compute_marginofstability(self, threshold=15):
         n_frames = self.q.shape[1]
         g = 9.81
         idx_LCAL = self.model_marker_names.index("LCAL")
@@ -79,6 +79,7 @@ class MosCalculation:
         com0 = self.model.CoM(self.q[:, 0]).to_array()
         trochanteric_height = np.mean([np.linalg.norm(com0[2] - LCAL_pos[2, 0]),
                                        np.linalg.norm(com0[2] - RCAL_pos[2, 0])])
+        # coefficients come from anthropometric scaling used in gait stability studies based on the XCoM framework (Hof et al., 2005).
         l_AP = 1.24 * trochanteric_height
         l_ML = 1.34 * trochanteric_height
         omega_AP = np.sqrt(g / l_AP)
@@ -148,7 +149,7 @@ class MosCalculation:
         trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
         return f"{result_folder}/dcom_mma_{trial_name}.pkl"
 
-    def save_mos(self):
+    def save_marginofsstability(self):
         with open(self.get_result_file_full_path(), "wb") as file:
             pickle.dump(self.outputs(), file)
 

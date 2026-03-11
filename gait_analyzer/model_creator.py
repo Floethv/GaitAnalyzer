@@ -604,7 +604,7 @@ class ModelCreator:
         # Hip Right
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["right_hip"]),
+                functional_trial=C3dData(trials_list["right_hip"]),
                 parent_name="pelvis",
                 child_name="femur_r",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
@@ -644,7 +644,7 @@ class ModelCreator:
         # Hip Left
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["left_hip"]),
+                functional_trial=C3dData(trials_list["left_hip"]),
                 parent_name="pelvis",
                 child_name="femur_l",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
@@ -703,7 +703,7 @@ class ModelCreator:
         except:
             raise RuntimeError("To animate the model, you must install Pyorerun.")
 
-        animation = LiveModelAnimation.from_file(self.biorbd_model_full_path, with_q_charts=True)
+        animation = LiveModelAnimation(self.biorbd_model_full_path, with_q_charts=True)
         animation.rerun()
 
     def get_mvc_values(self, plot_emg_flag: bool = False):
@@ -730,7 +730,6 @@ class ModelCreator:
                         )
                         emg = emg.interpolate_na(dim="time", method="linear")
                         emg_processed = (
-                            # emg.meca.interpolate_missing_data()
                             emg.meca.band_pass(order=2, cutoff=[10, 425])
                             .meca.center()
                             .meca.abs()

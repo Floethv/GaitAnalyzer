@@ -110,22 +110,7 @@ class AnalysisPerformer:
         packages = json.loads(result.stdout)
         packages_versions = {elt["name"]: elt["version"] for elt in packages}
 
-        # Get the version of the current package
-        # repo = git.Repo(search_parent_directories=True)
-        # commit_id = str(repo.commit())
-        # branch = str(repo.active_branch)
-        # try:
-            # tag = repo.git.describe("--tags")
-        # except git.exc.GitCommandError:
-            # tag = "No tag"
-        # gait_analyzer_version = repo.git.version_info
-        # git_date = repo.git.log("-1", "--format=%cd")
         version_dic = {
-            # "commit_id": commit_id,
-            # "git_date": git_date,
-            # "branch": branch,
-            # "tag": tag,
-            # "gait_analyzer_version": gait_analyzer_version,
             "date_of_the_analysis": date.today().strftime("%b-%d-%Y-%H-%M-%S"),
             "biorbd_version": packages_versions["biorbd"],
             "pyomeca_version": packages_versions["pyomeca"] if "pyomeca" in packages_versions else "Not installed",
@@ -176,7 +161,7 @@ class AnalysisPerformer:
         # For matlab analysis
         # --- Fix for MATLAB field name length limit (31 chars) ---
         def shorten_keys(d, max_len=31):
-            """Tronque récursivement les clés trop longues pour savemat()."""
+            """Recursively truncates keys that are too long for savemat()"""
             new_dict = {}
             for k, v in d.items():
                 new_key = k[:max_len] if isinstance(k, str) else k

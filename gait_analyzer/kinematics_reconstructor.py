@@ -368,7 +368,7 @@ class KinematicsReconstructor:
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
                 ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
-                self.q = q_recons[:, index_to_keep]
+                self.q = q_recons #[:, index_to_keep]
                 residuals = ik.sol()["residuals"]
                 if self.q_regularization_weight is not None or self.qdot_regularization_weight is not None:
                     print("Warning: Regularization weights are only used for the LSQ reconstruction method.")
@@ -394,7 +394,9 @@ class KinematicsReconstructor:
                     animate_reconstruction=False,
                     compute_residual_distance=True,
                 )
-                self.q = q_recons[:, index_to_keep]
+                self.q = q_recons #[:, index_to_keep]
+                dt = self.experimental_data.markers_dt
+                self.t = np.arange(markers.shape[2]) * dt
                 self.q_filtered, self.qdot, self.qddot = self.filter_kinematics()
 
             elif recons_method == ReconstructionType.EKF:
@@ -405,12 +407,12 @@ class KinematicsReconstructor:
                 _, q_filtered, qdot, qddot = biorbd.extended_kalman_filter(
                     self.biorbd_model,
                     self.experimental_data.c3d_full_file_path,
-                    frames=slice(self.padded_frame_range.start, self.padded_frame_range.stop),
+                    frames=slice(self.frame_range),
                 )
-                self.q = q_filtered[:, index_to_keep]
-                self.q_filtered = q_filtered[:, index_to_keep]
-                self.qdot = qdot[:, index_to_keep]
-                self.qddot = qddot[:, index_to_keep]
+                self.q = q_filtered #[:, index_to_keep]
+                self.q_filtered = q_filtered #[:, index_to_keep]
+                self.qdot = qdot #[:, index_to_keep]
+                self.qddot = qddot #[:, index_to_keep]
 
                 residuals = np.zeros(
                     (
@@ -438,8 +440,6 @@ class KinematicsReconstructor:
             )
 
         self.q = q_recons #[:, index_to_keep]
-        dt = self.experimental_data.markers_dt
-        self.t = np.arange(markers.shape[2]) * dt
         self.markers = markers #[:, :, index_to_keep]
         self.marker_residuals = residuals
 

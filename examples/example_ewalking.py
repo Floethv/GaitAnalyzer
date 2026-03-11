@@ -38,8 +38,8 @@ def analysis_to_perform(
         mvc_trials_path=f"{base_data_path}/mvc_trials/",
         functional_trials_path=f"{base_data_path}/functional_trials/",
         q_regularization_weight=1,
-        skip_if_existing=True,
-        animate_model_flag=False,
+        skip_if_existing=False,
+        animate_model_flag=True,
     )
 
     # --- Ignore certain markers and channels ---

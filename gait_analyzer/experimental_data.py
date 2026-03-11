@@ -81,7 +81,7 @@ class ExperimentalData:
         # Extract data from the c3d file
         print(f"Reading experimental data from file {self.c3d_full_file_path} ...")
         self.perform_initial_treatment()
-        self.extract_gait_parameters()
+        self.extract_gait_parameters(nb_cycle=None)
         if animate_c3d_flag:
             self.animate_c3d()
 
@@ -240,9 +240,9 @@ class ExperimentalData:
                 )
 
                 # Remove the values when the force is too small since it is likely only noise
-                # null_idx = np.where(np.linalg.norm(force_filtered[i_platform, :, :], axis=0) < self.force_threshold)[0]
-                # moment_filtered[i_platform, :, null_idx] = np.nan
-                # force_filtered[i_platform, :, null_idx] = np.nan
+                null_idx = np.where(np.linalg.norm(force_filtered[i_platform, :, :], axis=0) < self.force_threshold)[0]
+                moment_filtered[i_platform, :, null_idx] = np.nan
+                force_filtered[i_platform, :, null_idx] = np.nan
 
                 # Do not trust the CoP from ezc3d and recompute it after filtering the forces and moments
                 cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
@@ -279,37 +279,37 @@ class ExperimentalData:
                 if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1:
                     is_good_trial = False
 
-                # if not is_good_trial:
-                #     import matplotlib.pyplot as plt
-                #
-                #     fig, axs = plt.subplots(4, 1, figsize=(10, 10))
-                #
-                #     axs[0].plot(cop_ezc3d[0, :], "-b", label="CoP ezc3d raw")
-                #     axs[1].plot(cop_ezc3d[1, :], "-b")
-                #     axs[2].plot(cop_ezc3d[2, :], "-b")
-                #
-                #     axs[0].plot(cop_filtered[i_platform, 0, :], "--r", label="CoP recomputed (from filtered F and M)")
-                #     axs[1].plot(cop_filtered[i_platform, 1, :], "--r")
-                #     axs[2].plot(cop_filtered[i_platform, 2, :], "--r")
-                #
-                #     axs[0].set_xlim(0, 25000)
-                #     axs[1].set_xlim(0, 25000)
-                #     axs[2].set_xlim(0, 25000)
-                #
-                #     axs[0].set_ylim(-1, 1)
-                #     axs[1].set_ylim(-1, 1)
-                #     axs[2].set_ylim(-0.01, 0.01)
-                #
-                #     axs[3].plot(np.linalg.norm(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :], axis=0))
-                #     axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), "--k")
-                #     axs[3].set_ylabel("Error (m)")
-                #
-                #     axs[0].legend()
-                #     fig.savefig("CoP_filtering_error.png")
-                #     fig.show()
-                #     raise NotImplementedError(
-                #         "The force platform data is not computed the same way in ezc3d than in this code, see the CoP graph."
-                #     )
+                if not is_good_trial:
+                    import matplotlib.pyplot as plt
+
+                    fig, axs = plt.subplots(4, 1, figsize=(10, 10))
+
+                    axs[0].plot(cop_ezc3d[0, :], "-b", label="CoP ezc3d raw")
+                    axs[1].plot(cop_ezc3d[1, :], "-b")
+                    axs[2].plot(cop_ezc3d[2, :], "-b")
+
+                    axs[0].plot(cop_filtered[i_platform, 0, :], "--r", label="CoP recomputed (from filtered F and M)")
+                    axs[1].plot(cop_filtered[i_platform, 1, :], "--r")
+                    axs[2].plot(cop_filtered[i_platform, 2, :], "--r")
+
+                    axs[0].set_xlim(0, 25000)
+                    axs[1].set_xlim(0, 25000)
+                    axs[2].set_xlim(0, 25000)
+
+                    axs[0].set_ylim(-1, 1)
+                    axs[1].set_ylim(-1, 1)
+                    axs[2].set_ylim(-0.01, 0.01)
+
+                    axs[3].plot(np.linalg.norm(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :], axis=0))
+                    axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), "--k")
+                    axs[3].set_ylabel("Error (m)")
+
+                    axs[0].legend()
+                    fig.savefig("CoP_filtering_error.png")
+                    fig.show()
+                    # raise NotImplementedError(
+                    #     "The force platform data is not computed the same way in ezc3d than in this code, see the CoP graph."
+                    # )
 
             self.f_ext_sorted = f_ext_sorted
             self.f_ext_sorted_filtered = f_ext_sorted_filtered
@@ -343,9 +343,8 @@ class ExperimentalData:
           self.gait_parameters_meanstd = {'right_leg': {...}, 'left_leg': {...}}
         """
         if seuil is None:
-            seuil = self.force_threshold  # default threshold (N)
+            seuil = self.force_threshold  
 
-        # find index of RCAL and LCAL in marker names
         try:
             idx_RCAL = self.model_marker_names.index("RCAL")
         except ValueError:
@@ -358,7 +357,6 @@ class ExperimentalData:
         if idx_RCAL is None and idx_LCAL is None:
             raise RuntimeError("Neither RCAL nor LCAL markers found in model_marker_names.")
 
-        # get trajectories for RCAL/LCAL (shape markers_sorted: 3 x nmarkers x nframes)
         if idx_RCAL is not None:
             traj_RCAL = self.markers_sorted[:, idx_RCAL, :]  # shape (3, nframes)
         else:
@@ -368,8 +366,6 @@ class ExperimentalData:
         else:
             traj_LCAL = None
 
-        # Extract forces: we assume at least 2 platforms and that f_ext_sorted_filtered
-        # uses indices 6:9 for forces (x,y,z) as in your code.
         if self.f_ext_sorted_filtered is None:
             raise RuntimeError("Force data (f_ext_sorted_filtered) not computed.")
 
@@ -377,129 +373,100 @@ class ExperimentalData:
         if nb_platforms < 1:
             raise RuntimeError("No force platforms found in f_ext_sorted_filtered.")
 
-        # Map platform forces: assume platform 0 -> Force1, platform 1 -> Force2 (like MATLAB)
-        # take vertical component (index 2 of the 3)
-        # f_ext_sorted_filtered shape: (platform, 9, nframes_analogs) and forces are at 6,7,8 (x,y,z)
-        # So vertical force is at index 8 of axis=1 -> element 6+2 = 8
-        # Extract arrays with length nb_analog_frames
         force1 = self.f_ext_sorted_filtered[0, 6:9, :].copy() if nb_platforms >= 1 else None
         force2 = self.f_ext_sorted_filtered[1, 6:9, :].copy() if nb_platforms >= 2 else None
 
         if force1 is None and force2 is None:
             raise RuntimeError("Could not find force arrays on platforms 1 or 2.")
 
-        # helper to compute gait parameters for a given 'pied' (1 -> left, 2 -> right)
-        def _gait_parameters_calculation(pied: int, nbcycle: int | None, seuil_local: float):
-            # choose studied foot and opposite based on 'pied'
-            if pied == 1:
-                fv_pied1 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
-                fv_pied2 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
+
+        def _gait_parameters_calculation(foot: int, nbcycle: int | None, seuil_local: float):
+            if foot == 1:
+                fv_foot1 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
+                fv_foot2 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
                 opp_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
                 study_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
             else:
-                fv_pied1 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
-                fv_pied2 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
+                fv_foot1 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
+                fv_foot2 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
                 opp_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
                 study_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
 
-            # normalize (remove baseline)
-            fv_pied1 = fv_pied1 - np.nanmin(fv_pied1)
-            fv_pied2 = fv_pied2 - np.nanmin(fv_pied2)
+            fv_foot1 = fv_foot1 - np.nanmin(fv_foot1)
+            fv_foot2 = fv_foot2 - np.nanmin(fv_foot2)
 
             fs_force = self.analogs_sampling_frequency
             fs_mks = self.marker_sampling_frequency
 
-            # time vectors (not used for indices but kept similar to matlab)
-            # detect rising edges where force crosses threshold from below to above
-            above = fv_pied1 > seuil_local
-            # diff of boolean array -> True where rising edge happens
-            idx_all = np.where(np.diff(above.astype(int)) == 1)[0] + 1  # +1 to get the index of crossing
+            above = fv_foot1 > seuil_local
+            idx_all = np.where(np.diff(above.astype(int)) == 1)[0] + 1
 
-            # If too-close events (artifacts) remove them (like idx_err in MATLAB)
             if idx_all.size > 1:
                 diffs = np.diff(idx_all)
                 mean_diff = np.mean(diffs)
-                idx_err = np.where(diffs < 0.75 * mean_diff)[0]  # indices of problematic diffs
+                idx_err = np.where(diffs < 0.75 * mean_diff)[0]
                 if idx_err.size > 0:
-                    # remove the event following each small diff (equiv to idx_all(idx_err+1) = [])
                     idx_all = np.delete(idx_all, idx_err + 1)
 
             if idx_all.size < 4:
-                # not enough cycles detected
                 return {}
 
-            # MATLAB skipped first 2 cycles and took subsequent ones; keep same behaviour
-            # prepare start/end indices for cycles
-            idx_deb = idx_all  # start indices of detected contacts
-            idx_fin = idx_all[1:]  # next start as end of previous
-            # keep pairs: (idx_deb[i], idx_fin[i]) for i in range(len(idx_fin))
-            # select cycles starting at 3rd detected event as MATLAB did
-            start_idx = 2  # zero-based -> MATLAB's 3
+
+            idx_deb = idx_all
+            idx_fin = idx_all[1:]
+            start_idx = 2
             available_cycles = len(idx_fin) - start_idx
             if nbcycle is None:
-                nbcycle = min(20, available_cycles)  # default to up to 5 cycles
+                nbcycle = available_cycles
             else:
                 nbcycle = min(nbcycle, max(0, available_cycles))
-
-            if nbcycle <= 0:
-                return {}
 
             use_idx_deb = idx_deb[start_idx: start_idx + nbcycle]
             use_idx_fin = idx_fin[start_idx: start_idx + nbcycle]
 
-            # convert factor to map force-frame indices to marker-frame indices
             idx_TpfToTframe = fs_mks / fs_force if fs_force != 0 else 1.0
 
-            fin_contact_pied_study = np.zeros(nbcycle, dtype=int)
-            fin_contact_pied_opp = np.zeros(nbcycle, dtype=int)
-            debut_contact_pied_opp = np.zeros(nbcycle, dtype=int)
+            fin_contact_foot_study = np.zeros(nbcycle, dtype=int)
+            fin_contact_foot_opp = np.zeros(nbcycle, dtype=int)
+            debut_contact_foot_opp = np.zeros(nbcycle, dtype=int)
 
             for ii in range(nbcycle):
                 a = use_idx_deb[ii]
                 b = use_idx_fin[ii]
-                # last index within [a,b] where study foot force > seuil
-                # search on fv_pied1[a:b+1]
-                seg = fv_pied1[a: b + 1]
+                seg = fv_foot1[a: b + 1]
                 rel = np.where(seg > seuil_local)[0]
                 if rel.size == 0:
-                    fin_contact_pied_study[ii] = a
+                    fin_contact_foot_study[ii] = a
                 else:
-                    fin_contact_pied_study[ii] = a + rel[-1]
+                    fin_contact_foot_study[ii] = a + rel[-1]
 
-                # first index within [a,b] where opposite foot force < seuil (MATLAB used < seuil)
-                seg2 = fv_pied2[a: b + 1]
+                seg2 = fv_foot2[a: b + 1]
                 rel2 = np.where(seg2 < seuil_local)[0]
                 if rel2.size == 0:
-                    fin_contact_pied_opp[ii] = a
+                    fin_contact_foot_opp[ii] = a
                 else:
-                    fin_contact_pied_opp[ii] = a + rel2[0]
+                    fin_contact_foot_opp[ii] = a + rel2[0]
 
-                # debut_contact_pied_opp: last index before idx_fin(ii) where fv_pied2 < seuil
-                # search in 0:use_idx_fin[ii]
-                pre_seg = fv_pied2[: use_idx_fin[ii] + 1]
+                pre_seg = fv_foot2[: use_idx_fin[ii] + 1]
                 rel3 = np.where(pre_seg < seuil_local)[0]
                 if rel3.size == 0:
-                    debut_contact_pied_opp[ii] = 0
+                    debut_contact_foot_opp[ii] = 0
                 else:
-                    debut_contact_pied_opp[ii] = rel3[-1]
+                    debut_contact_foot_opp[ii] = rel3[-1]
 
-            # compute gait parameters (arrays length = nbcycle-1 for stride-based ones like diff(idx_deb))
-            # StrideTime = diff(idx_deb)/fs_force in MATLAB -> use differences between successive selected idx_deb
             if len(use_idx_deb) >= 2:
                 stride_time = np.diff(use_idx_deb) / fs_force
             else:
                 stride_time = np.array([])
 
-            single_support_time = (debut_contact_pied_opp[: nbcycle - 1] - fin_contact_pied_opp[
+            single_support_time = (debut_contact_foot_opp[: nbcycle - 1] - fin_contact_foot_opp[
                                                                            : nbcycle - 1]) / fs_force
-            double_support_time = (fin_contact_pied_study[: nbcycle - 1] - debut_contact_pied_opp[
+            double_support_time = (fin_contact_foot_study[: nbcycle - 1] - debut_contact_foot_opp[
                                                                            : nbcycle - 1]) / fs_force
-            stance_time = (fin_contact_pied_study[: nbcycle - 1] - use_idx_deb[: nbcycle - 1]) / fs_force
+            stance_time = (fin_contact_foot_study[: nbcycle - 1] - use_idx_deb[: nbcycle - 1]) / fs_force
             swing_time = stride_time - stance_time if stride_time.size == stance_time.size else np.array([])
             frequency = 1.0 / stride_time if stride_time.size > 0 else np.array([])
 
-            # Step length: use study_cal & opp_cal x positions at time indices fin_contact_pied_study mapped to marker frames
-            # study_cal and opp_cal are arrays (3, nframes) — ensure they exist
             step_length = np.array([])
             step_width = np.array([])
             opp_step_length = np.array([])
@@ -508,17 +475,14 @@ class ExperimentalData:
 
             if study_cal is not None and opp_cal is not None:
 
-                # OppStepLength uses debut_contact_pied_opp mapped to marker frames
-                marker_idx2 = np.round(debut_contact_pied_opp * idx_TpfToTframe).astype(int)
+                marker_idx2 = np.round(debut_contact_foot_opp * idx_TpfToTframe).astype(int)
                 marker_idx2 = np.clip(marker_idx2, 0, study_cal.shape[1] - 1)
                 StepLength = np.abs(opp_cal[0, marker_idx2] - study_cal[0, marker_idx2])
                 StepLength = np.where(StepLength > 100, StepLength / 1000.0, StepLength)
                 StrideLength = StepLength[: StepLength.size - 1] + StepLength[: StepLength.size - 1]
                 # step width: mean(abs(opp_cal(2,:) - study_cal(2,:))) / 1000
-                # compute mean across all frames (y axis index 1)
                 StepWidth = np.abs(opp_cal[1, marker_idx2] - study_cal[1, marker_idx2])
 
-                # Velocity = StrideLength / StrideTime
                 if stride_time.size > 0:
                     Velocity = StrideLength / stride_time
                 else:
@@ -529,7 +493,7 @@ class ExperimentalData:
                 stride_length = StrideLength
                 velocity = Velocity
 
-            gait = {
+            gait_parameters = {
                 "StrideTime": stride_time,
                 "SingleSupportTime": single_support_time,
                 "DoubleSupportTime": double_support_time,
@@ -541,9 +505,9 @@ class ExperimentalData:
                 "StrideLength": stride_length,
                 "Velocity": velocity,
             }
-            return gait
+            return gait_parameters
 
-        # compute for left and right (pied 1 and 2 in matlab naming)
+        # compute for left and right (foot 1 and 2 in matlab naming)
         gait_left = _gait_parameters_calculation(1, nb_cycle, seuil)
         gait_right = _gait_parameters_calculation(2, nb_cycle, seuil)
 
