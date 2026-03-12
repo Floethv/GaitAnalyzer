@@ -416,58 +416,58 @@ class ExperimentalData:
 
 
             idx_deb = idx_all
-            idx_fin = idx_all[1:]
+            idx_end = idx_all[1:]
             start_idx = 2
-            available_cycles = len(idx_fin) - start_idx
+            available_cycles = len(idx_end) - start_idx
             if nbcycle is None:
                 nbcycle = available_cycles
             else:
                 nbcycle = min(nbcycle, max(0, available_cycles))
 
             use_idx_deb = idx_deb[start_idx: start_idx + nbcycle]
-            use_idx_fin = idx_fin[start_idx: start_idx + nbcycle]
+            use_idx_end = idx_end[start_idx: start_idx + nbcycle]
 
             idx_TpfToTframe = fs_mks / fs_force if fs_force != 0 else 1.0
 
-            fin_contact_foot_study = np.zeros(nbcycle, dtype=int)
-            fin_contact_foot_opp = np.zeros(nbcycle, dtype=int)
-            debut_contact_foot_opp = np.zeros(nbcycle, dtype=int)
+            end_contact_foot_study = np.zeros(nbcycle, dtype=int)
+            end_contact_foot_opp = np.zeros(nbcycle, dtype=int)
+            start_contact_foot_opp = np.zeros(nbcycle, dtype=int)
 
             for ii in range(nbcycle):
                 a = use_idx_deb[ii]
-                b = use_idx_fin[ii]
+                b = use_idx_end[ii]
                 seg = fv_foot1[a: b + 1]
                 rel = np.where(seg > seuil_local)[0]
                 if rel.size == 0:
-                    fin_contact_foot_study[ii] = a
+                    end_contact_foot_study[ii] = a
                 else:
-                    fin_contact_foot_study[ii] = a + rel[-1]
+                    end_contact_foot_study[ii] = a + rel[-1]
 
                 seg2 = fv_foot2[a: b + 1]
                 rel2 = np.where(seg2 < seuil_local)[0]
                 if rel2.size == 0:
-                    fin_contact_foot_opp[ii] = a
+                    end_contact_foot_opp[ii] = a
                 else:
-                    fin_contact_foot_opp[ii] = a + rel2[0]
+                    end_contact_foot_opp[ii] = a + rel2[0]
 
-                pre_seg = fv_foot2[: use_idx_fin[ii] + 1]
+                pre_seg = fv_foot2[: use_idx_end[ii] + 1]
                 rel3 = np.where(pre_seg < seuil_local)[0]
                 if rel3.size == 0:
-                    debut_contact_foot_opp[ii] = 0
+                    start_contact_foot_opp[ii] = 0
                 else:
-                    debut_contact_foot_opp[ii] = rel3[-1]
+                    start_contact_foot_opp[ii] = rel3[-1]
 
             if len(use_idx_deb) >= 2:
                 stride_time = np.diff(use_idx_deb) / fs_force
             else:
                 stride_time = np.array([])
 
-            single_support_time = (debut_contact_foot_opp[: nbcycle - 1] - fin_contact_foot_opp[
+            single_support_time = (start_contact_foot_opp[: nbcycle - 1] - end_contact_foot_opp[
                                                                            : nbcycle - 1]) / fs_force
-            double_support_time = (fin_contact_foot_study[: nbcycle - 1] - debut_contact_foot_opp[
+            double_support_time = (end_contact_foot_study[: nbcycle - 1] - start_contact_foot_opp[
                                                                            : nbcycle - 1]) / fs_force
-            stance_time = (fin_contact_foot_study[: nbcycle - 1] - use_idx_deb[: nbcycle - 1]) / fs_force
-            swing_time = stride_time - stance_time if stride_time.size == stance_time.size else np.array([])
+            stance_time = single_support_time + double_support_time
+            swing_time = stride_time - stance_time
             frequency = 1.0 / stride_time if stride_time.size > 0 else np.array([])
 
             step_length = np.array([])
@@ -478,7 +478,7 @@ class ExperimentalData:
 
             if study_cal is not None and opp_cal is not None:
 
-                marker_idx2 = np.round(debut_contact_foot_opp * idx_TpfToTframe).astype(int)
+                marker_idx2 = np.round(start_contact_foot_opp * idx_TpfToTframe).astype(int)
                 marker_idx2 = np.clip(marker_idx2, 0, study_cal.shape[1] - 1)
                 StepLength = np.abs(opp_cal[0, marker_idx2] - study_cal[0, marker_idx2])
                 StepLength = np.where(StepLength > 100, StepLength / 1000.0, StepLength)

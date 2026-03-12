@@ -67,8 +67,7 @@ class ResultManager:
         self.marginofstability_calculator = None
         self.mechanical_energy_calculator = None
         self.com_mma_distance_calculator = None
-        self.Em = None
-        self.Em_norm = None
+        self.mechanical_energy = None
         self.E_pot = None
         self.E_kin = None
 
@@ -283,14 +282,14 @@ class ResultManager:
                 self.angular_momentum_calculator.segments_data,
             )
 
-        Em = self.mechanical_energy_calculator.compute_mechanical_energy(
+        mechanical_energy = self.mechanical_energy_calculator.compute_mechanical_energy(
             skip_if_existing=skip_if_existing
         )
 
         if plot:
             self.mechanical_energy_calculator.plot_energy()
 
-        return Em
+        return mechanical_energy
 
     def compute_marginofstability(self, skip_if_existing: bool = False):
         if self.marginofstability_calculator is not None:
