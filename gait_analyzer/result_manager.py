@@ -12,6 +12,7 @@ from gait_analyzer.subject import Subject, Side
 from gait_analyzer.biomechanics_quantities.marginofstability_calculator import MarginofStabilityCalculation
 from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import MechanicalEnergyCalculator
 from gait_analyzer.biomechanics_quantities.com_mma_distance_calculator import ComMmaDistanceCalculator
+from gait_analyzer.biomechanics_quantities.percentage_of_instability_calculator import ProbabilityOfInstability
 
 class ResultManager:
     """
@@ -65,6 +66,7 @@ class ResultManager:
         self.optimal_estimator = None
         self.angular_momentum_calculator = None
         self.marginofstability_calculator = None
+        self.percentage_of_instability_calculator = None
         self.mechanical_energy_calculator = None
         self.com_mma_distance_calculator = None
         self.mechanical_energy = None
@@ -302,6 +304,17 @@ class ResultManager:
             q=self.kinematics_reconstructor.q_filtered,
             qdot=self.kinematics_reconstructor.qdot,
             experimental_data=self.experimental_data,
+            skip_if_existing=skip_if_existing,
+        )
+
+    def compute_probalityofstability(self, skip_if_existing: bool = False):
+        if self.percentage_of_instability_calculator is not None:
+            return
+
+        self.percentage_of_instability_calculator = ProbabilityOfInstability(
+            marginofstability_calculator=self.marginofstability_calculator,
+            experimental_data=self.experimental_data,
+            subject=self.subject,
             skip_if_existing=skip_if_existing,
         )
 

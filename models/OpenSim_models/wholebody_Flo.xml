@@ -1185,13 +1185,13 @@
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="RMHE">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="RUS">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
@@ -1221,13 +1221,13 @@
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="LMHE">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="LUS">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
